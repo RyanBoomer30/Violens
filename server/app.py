@@ -4,12 +4,37 @@ from fastapi.responses import JSONResponse
 import time
 import os
 import shutil
+import json
 from datetime import datetime
 from video_inference import analyze_video, generate_report
 
 app = FastAPI(title="Social Sentinel Analysis API")
 
-reports_db = []
+REPORTS_FILE = "reports.json"
+
+def load_reports():
+    """Load reports from JSON file"""
+    if os.path.exists(REPORTS_FILE):
+        try:
+            with open(REPORTS_FILE, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+    return []
+
+def save_reports(reports):
+    """Save reports to JSON file"""
+    try:
+        with open(REPORTS_FILE, 'w') as f:
+            json.dump(reports, f, indent=2)
+    except Exception as e:
+        print(f"Error saving reports: {str(e)}")
+
+def add_report(report):
+    """Add a new report to the file"""
+    reports = load_reports()
+    reports.append(report)
+    save_reports(reports)
 
 @app.post("/analyze_clip", summary="Upload and analyze a video clip")
 async def analyze_clip(file: UploadFile = File(...)):
@@ -41,13 +66,13 @@ async def analyze_clip(file: UploadFile = File(...)):
             "report": None
         }
         
-        # If violence is detected, generate a detailed report
+        # If violence is detected, generate a detailed report and save video
         if violence_detected.lower() == "true":
             report_data = generate_report(temp_file_path)
             response_data["report"] = report_data
             response_data["classification"] = report_data.get("classification", "Unknown")
             
-            # Store the report in the database
+            # Store the report in the file
             report_entry = {
                 "report_id": int(time.time() * 1000),
                 "filename": file.filename,
@@ -57,12 +82,16 @@ async def analyze_clip(file: UploadFile = File(...)):
                 "detailed_report": report_data.get("detailed_report", ""),
                 "report": report_data  # Keep full report for backward compatibility
             }
-            reports_db.append(report_entry)
-        
-        # Save video permanently to storage directory
-        shutil.copy2(temp_file_path, storage_file_path)
-        response_data["video_saved"] = True
-        response_data["storage_path"] = storage_file_path
+            add_report(report_entry)
+            
+            # Save video permanently to storage directory only if violence detected
+            shutil.copy2(temp_file_path, storage_file_path)
+            response_data["video_saved"] = True
+            response_data["storage_path"] = storage_file_path
+        else:
+            # No violence detected, don't save video
+            response_data["video_saved"] = False
+            response_data["storage_path"] = None
         
         return JSONResponse(content=response_data)
         
@@ -76,7 +105,28 @@ async def analyze_clip(file: UploadFile = File(...)):
 
 @app.get("/reports", summary="Get all generated incident reports")
 async def get_reports():
-    return JSONResponse(content={"reports": sorted(reports_db, key=lambda r: r['report_id'], reverse=True)})
+    reports = load_reports()
+    return JSONResponse(content={"reports": sorted(reports, key=lambda r: r['report_id'], reverse=True)})
+
+@app.get("/reports/{report_id}", summary="Get a specific report by ID")
+async def get_report(report_id: int):
+    reports = load_reports()
+    for report in reports:
+        if report['report_id'] == report_id:
+            return JSONResponse(content=report)
+    raise HTTPException(status_code=404, detail="Report not found")
+
+@app.delete("/reports/{report_id}", summary="Delete a specific report by ID")
+async def delete_report(report_id: int):
+    reports = load_reports()
+    original_count = len(reports)
+    reports = [r for r in reports if r['report_id'] != report_id]
+    
+    if len(reports) == original_count:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    save_reports(reports)
+    return JSONResponse(content={"message": "Report deleted successfully"})
 
 @app.get("/stored_videos", summary="Get list of stored videos")
 async def get_stored_videos():
