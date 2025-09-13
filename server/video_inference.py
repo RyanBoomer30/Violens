@@ -32,7 +32,10 @@ def display_frames(base64Frames):
         display_handle.update(Image(data=base64.b64decode(img.encode("utf-8"))))
         time.sleep(0.025)
 
-def analyze_video(base64Frames):
+# Analyzes the video frames to detect bullying or depression behavior
+# Returns True if bullying or depression behavior is detected, False otherwise
+def analyze_video(file_address):
+    base64Frames = read_vid(file_address)
     response = client.responses.create(
         model="gpt-4.1-mini",
         input=[
@@ -59,7 +62,10 @@ def analyze_video(base64Frames):
 
     return response.output_text
 
-def generate_report(base64Frames):
+# Generates a report based on the analysis of the video frames
+# Returns the report as a string
+def generate_report(file_address):
+    base64Frames = read_vid(file_address)
     response = client.responses.create(
         model="gpt-4.1-mini",
         input=[
@@ -83,3 +89,5 @@ def generate_report(base64Frames):
             }
         ],
     )
+
+    return str(response.output_text)
