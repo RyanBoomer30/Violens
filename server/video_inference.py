@@ -58,3 +58,28 @@ def analyze_video(base64Frames):
     )
 
     return response.output_text
+
+def generate_report(base64Frames):
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": (
+                            "Generate a detailed report based on the analysis of these video frames. Include the following sections: Summary of the incident, detailed analysis of the behavior, recommendations for intervention, and any other relevant information."
+                        )
+                    },
+                    *[
+                        {
+                            "type": "input_image",
+                            "image_url": f"data:image/jpeg;base64,{frame}"
+                        }
+                        for frame in base64Frames[0::25]
+                    ]
+                ]
+            }
+        ],
+    )
