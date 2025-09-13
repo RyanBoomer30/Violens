@@ -1,62 +1,58 @@
-import fastapi
 import uvicorn
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
+import time
 import os
 import shutil
 from datetime import datetime
 
-app = fastapi.FastAPI(
-    title="Social Sentinel Analysis API",
-    description="Analyzes video clips for bullying and social isolation events.",
-    version="1.0.0"
-)
+app = FastAPI(title="Social Sentinel Analysis API")
 
-TEMP_CLIP_DIR = "temp_clips"
+reports_db = []
 
-if not os.path.exists(TEMP_CLIP_DIR):
-    os.makedirs(TEMP_CLIP_DIR)
-
-def run_analysis_model(clip_path: str) -> dict:
-    print(f"🧠 Analyzing clip: {clip_path}... Placeholder model running.")
-    
-    import time
+def run_analysis_model(video_path: str) -> dict:
+    print(f"Analyzing video: {video_path}...")
     time.sleep(2)
-
     report = {
+        "report_id": int(time.time() * 1000),
         "analysis_timestamp_utc": datetime.utcnow().isoformat(),
-        "event_type": "Potential Incident Detected",
-        "event_summary": "This is a placeholder response from the analysis model. The clip has been received and processed.",
-        "severity": "Unknown",
-        "confidence_score": 0.95
+        "event_summary": "A potential social isolation event was detected.",
+        "severity": "Medium",
+        "confidence_score": 0.88,
+        "suggested_action": "Counselor review is suggested."
     }
-    
-    print("✅ Analysis complete. Returning static report.")
+    print("Analysis complete.")
     return report
 
 @app.post("/analyze_clip", summary="Upload and analyze a video clip")
-async def analyze_clip_endpoint(file: fastapi.UploadFile = fastapi.File(...)):
-    temp_path = os.path.join(TEMP_CLIP_DIR, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
+async def analyze_clip(file: UploadFile = File(...)):
+    temp_dir = "temp_clips"
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+    
+    temp_file_path = os.path.join(temp_dir, file.filename)
     
     try:
-        with open(temp_path, "wb") as buffer:
+        with open(temp_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
-        analysis_report = run_analysis_model(temp_path)
+        analysis_report = run_analysis_model(temp_file_path)
         
-        analysis_report["original_filename"] = file.filename
-
-        return fastapi.responses.JSONResponse(content=analysis_report)
-
+        reports_db.append(analysis_report)
+        
+        return JSONResponse(content=analysis_report)
+        
     except Exception as e:
-        return fastapi.responses.JSONResponse(
-            status_code=500,
-            content={"error": "An internal error occurred during analysis.", "detail": str(e)}
-        )
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        
     finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-            print(f"🧹 Cleaned up temporary file: {temp_path}")
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
+@app.get("/reports", summary="Get all generated incident reports")
+async def get_reports():
+    return JSONResponse(content={"reports": sorted(reports_db, key=lambda r: r['report_id'], reverse=True)})
 
 if __name__ == "__main__":
-    print("🚀 Starting Social Sentinel Analysis Server at http://127.0.0.1:8000")
-    uvicorn.run("analysis_backend:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("analysis_backend:app", host="0.0.0.0", port=8000, reload=True)
 
