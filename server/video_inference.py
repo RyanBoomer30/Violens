@@ -63,10 +63,12 @@ def analyze_video(file_address):
     return response.output_text
 
 # Generates a report based on the analysis of the video frames
-# Returns the report as a string
+# Returns the report as a dictionary with classification and details
 def generate_report(file_address):
     base64Frames = read_vid(file_address)
-    response = client.responses.create(
+    
+    # First, get the classification of the altercation
+    classification_response = client.responses.create(
         model="gpt-4.1-mini",
         input=[
             {
@@ -75,7 +77,7 @@ def generate_report(file_address):
                     {
                         "type": "input_text",
                         "text": (
-                            "Generate a detailed report based on the analysis of these video frames. Include the following sections: Summary of the incident, detailed analysis of the behavior, recommendations for intervention, and any other relevant information."
+                            "Analyze these video frames and classify the type of altercation or violent behavior. Choose the most appropriate category from: 'Physical Fight', 'Verbal Harassment', 'Bullying/Intimidation', 'Property Damage', 'Threats/Intimidation', 'Social Exclusion', 'Cyberbullying', 'Self-Harm', 'Other'. Respond with only the category name."
                         )
                     },
                     *[
@@ -89,5 +91,33 @@ def generate_report(file_address):
             }
         ],
     )
-
-    return str(response.output_text)
+    
+    # Then, get the detailed report
+    detailed_report_response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": (
+                            "Generate a concise incident report based on these video frames. Keep it brief and focused. Include: 1) Brief incident summary (1-2 sentences), 2) Key behaviors observed, 3) Recommended action. Maximum 150 words total."
+                        )
+                    },
+                    *[
+                        {
+                            "type": "input_image",
+                            "image_url": f"data:image/jpeg;base64,{frame}"
+                        }
+                        for frame in base64Frames[0::25]
+                    ]
+                ]
+            }
+        ],
+    )
+    
+    return {
+        "classification": str(classification_response.output_text).strip(),
+        "detailed_report": str(detailed_report_response.output_text)
+    }
