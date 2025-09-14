@@ -2,3 +2,5 @@ fastapi
 uvicorn[standard]
 python-multipart
 opencv-python
+websockets
+watchdog

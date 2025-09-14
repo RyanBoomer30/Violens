@@ -45,7 +45,7 @@ def analyze_video(file_address):
                     {
                         "type": "input_text",
                         "text": (
-                            "Analyze these video frames to detect bullying or depression behavior. Look for signs such as: aggressive behavior, physical confrontation, verbal harassment, social exclusion, emotional distress, signs of sadness or withdrawal, self-harm indicators, or other concerning behaviors that might indicate bullying or depression. Respond with only 'True' if you detect any bullying or depression-related behavior, or 'False' if you do not detect such behavior."
+                            "Analyze these video frames to detect if there are human in the video. Respond with only 'True' if you detect any, or 'False' if you do not."
                         )
                     },
                     *[
@@ -84,7 +84,7 @@ def generate_report(file_address):
                     {
                         "type": "input_text",
                         "text": (
-                            "Analyze these video frames and classify the type of altercation or violent behavior. Choose the most appropriate category from: 'Physical Fight', 'Verbal Harassment', 'Bullying/Intimidation', 'Property Damage', 'Threats/Intimidation', 'Social Exclusion', 'Cyberbullying', 'Self-Harm', 'Other'. Respond with only the category name."
+                            "Analyze these video frames and explain if there are human fighting and tips on how to prevent it."
                         )
                     },
                     *[
