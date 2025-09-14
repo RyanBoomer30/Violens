@@ -4,11 +4,13 @@ import os
 import json
 import shutil
 from openai import OpenAI
+from dotenv import load_dotenv
 
-# It's highly recommended to use environment variables for API keys
-# client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-# For this hackathon, we'll use the provided key directly
-client = OpenAI(api_key="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")
+# Load environment variables from .env file
+load_dotenv()
+
+# Initialize OpenAI client with API key from environment
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def analyze_video_and_generate_report(file_address):
