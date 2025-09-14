@@ -1,130 +1,143 @@
-from IPython.display import display, Image, Audio
-
-import cv2  # We're using OpenCV to read video, to install !pip install opencv-python
+import cv2
 import base64
-import time
-from openai import OpenAI
 import os
+import json
+import shutil
+from openai import OpenAI
 
-# Delete this after the hackathon plzzz
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "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"))
+# It's highly recommended to use environment variables for API keys
+# client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# For this hackathon, we'll use the provided key directly
+client = OpenAI(api_key="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")
 
-# Reads the video and returns a list of base64 encoded frames
-def read_vid(file_address):
-    video = cv2.VideoCapture(file_address)
 
-    base64Frames = []
-    while video.isOpened():
-        success, frame = video.read()
-        if not success:
-            break
-        _, buffer = cv2.imencode(".jpg", frame)
-        base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
+def analyze_video_and_generate_report(file_address):
+    """
+    Analyzes video frames using a single, efficient API call to an OpenAI model.
 
-    video.release()
-    print(len(base64Frames), "frames read.")
-    return base64Frames
+    This function reads a video, converts frames to base64, and sends them to the 
+    OpenAI API with a prompt that asks for a JSON object containing:
+    - violence_detected (bool): Whether violence was detected.
+    - classification (str): A one-word classification (e.g., "Self-harm", "Fighting", "Safe").
+    - detailed_report (str): A brief summary of the events.
 
-# Used for testing not really needed for processing
-def display_frames(base64Frames):
-    display_handle = display(None, display_id=True)
-    for img in base64Frames:
-        display_handle.update(Image(data=base64.b64decode(img.encode("utf-8"))))
-        time.sleep(0.025)
+    Returns:
+        A dictionary containing the analysis results, or a default "error" dictionary if analysis fails.
+    """
+    try:
+        video = cv2.VideoCapture(file_address)
+        base64Frames = []
+        while video.isOpened():
+            success, frame = video.read()
+            if not success:
+                break
+            _, buffer = cv2.imencode(".jpg", frame)
+            base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
+        video.release()
 
-# Analyzes the video frames to detect bullying or depression behavior
-# Returns True if bullying or depression behavior is detected, False otherwise
-def analyze_video(file_address):
-    base64Frames = read_vid(file_address)
-    response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=[
+        if not base64Frames:
+            print("Warning: Could not read any frames from the video.")
+            return {
+                "violence_detected": False,
+                "classification": "Error",
+                "detailed_report": "Could not read frames from video file."
+            }
+        
+        # --- START OF NEW DEBUGGING CODE ---
+        # Create a temporary directory to store frames for visual inspection.
+        TEMP_FRAMES_DIR = "temp_frames_for_debugging"
+        if os.path.exists(TEMP_FRAMES_DIR):
+            shutil.rmtree(TEMP_FRAMES_DIR)
+        os.makedirs(TEMP_FRAMES_DIR)
+        
+        # Sample the frames that will be sent to the API.
+        sampled_frames = base64Frames[0::5]
+        print(f"Read {len(base64Frames)} frames. Saving {len(sampled_frames)} sampled frames to '{TEMP_FRAMES_DIR}' for debugging...")
+
+        # Save the sampled frames to disk so you can see what the AI sees.
+        for i, frame_data in enumerate(sampled_frames):
+            img_data = base64.b64decode(frame_data)
+            file_path = os.path.join(TEMP_FRAMES_DIR, f"frame_{i+1:03d}.jpg")
+            with open(file_path, 'wb') as f:
+                f.write(img_data)
+        # --- END OF NEW DEBUGGING CODE ---
+
+        print(f"Sending {len(sampled_frames)} frames for analysis...")
+
+        # Construct the prompt for the OpenAI API using the sampled frames
+        prompt_messages = [
             {
                 "role": "user",
                 "content": [
                     {
-                        "type": "input_text",
+                        "type": "text",
                         "text": (
-                            "Analyze these video frames to detect if there are human in the video. Respond with only 'True' if you detect any, or 'False' if you do not."
+                            "Analyze the following video frames for any form of violence, fighting, self-harm, or aggression. "
+                            "Based on your analysis, you MUST respond with only a single JSON object in the following format: "
+                            '{"violence_detected": <true_or_false>, "classification": "<One-word classification>", "detailed_report": "<A brief, 1-2 sentence summary of the incident or observation>"}. '
+                            "Do not include any text or markdown formatting before or after the JSON object."
                         )
                     },
                     *[
                         {
-                            "type": "input_image",
-                            "image_url": f"data:image/jpeg;base64,{frame}"
+                            "type": "image_url", 
+                            "image_url": {"url": f"data:image/jpeg;base64,{frame}"}
                         }
-                        for frame in base64Frames[0::25]
+                        for frame in sampled_frames
                     ]
-                ]
+                ],
             }
-        ],
-    )
-    
-    print("Classification: " + response.output_text)
-    
-    if response.output_text == "True":
-        return True
-    elif response.output_text == "False":
-        return False
-    else:
-        raise Exception("Invalid classification: " + response.output_text)
+        ]
 
-# Generates a report based on the analysis of the video frames
-# Returns the report as a dictionary with classification and details
-def generate_report(file_address):
-    base64Frames = read_vid(file_address)
-    
-    # First, get the classification of the altercation
-    classification_response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": (
-                            "Analyze these video frames and explain if there are human fighting and tips on how to prevent it."
-                        )
-                    },
-                    *[
-                        {
-                            "type": "input_image",
-                            "image_url": f"data:image/jpeg;base64,{frame}"
-                        }
-                        for frame in base64Frames[0::25]
-                    ]
-                ]
+        # Use the gpt-4o model for better vision and JSON capabilities
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=prompt_messages,
+            max_tokens=400
+        )
+        
+        # Check the reason the model stopped generating text
+        finish_reason = response.choices[0].finish_reason
+        if finish_reason == 'content_filter':
+            print("Error: OpenAI's content filter was triggered.")
+            return {
+                "violence_detected": True, # If the filter is triggered, it's a strong signal of problematic content
+                "classification": "Content Filtered",
+                "detailed_report": "The video was flagged by the AI's content safety system, likely due to depicting self-harm or severe violence."
             }
-        ],
-    )
-    
-    # Then, get the detailed report
-    detailed_report_response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "input_text",
-                        "text": (
-                            "Generate a concise incident report based on these video frames. Keep it brief and focused. Include: 1) Brief incident summary (1-2 sentences), 2) Key behaviors observed, 3) Recommended action. Maximum 150 words total."
-                        )
-                    },
-                    *[
-                        {
-                            "type": "input_image",
-                            "image_url": f"data:image/jpeg;base64,{frame}"
-                        }
-                        for frame in base64Frames[0::25]
-                    ]
-                ]
+
+        response_text = response.choices[0].message.content
+        print(f"Raw OpenAI response: {response_text}")
+
+        # Handle cases where the response might still be None for other reasons
+        if response_text is None:
+            print(f"Error: OpenAI response content is None. Finish reason: {finish_reason}")
+            return {
+                "violence_detected": False,
+                "classification": "API Error",
+                "detailed_report": f"The AI model returned an empty response. The reason was '{finish_reason}'."
             }
-        ],
-    )
-    
-    return {
-        "classification": str(classification_response.output_text).strip(),
-        "detailed_report": str(detailed_report_response.output_text)
-    }
+        
+        # Clean the response to remove markdown code block fences if they exist
+        if response_text.strip().startswith("```json"):
+            response_text = response_text.strip()[7:-4].strip()
+        
+        json_response = json.loads(response_text)
+        return json_response
+
+    except json.JSONDecodeError as e:
+        print(f"Error: Could not decode JSON from OpenAI response. Error: {e}")
+        print(f"Received text: {response_text}")
+        return {
+            "violence_detected": False, # Default to false on error
+            "classification": "Parsing Error",
+            "detailed_report": "The model's response was not valid JSON."
+        }
+    except Exception as e:
+        print(f"An unexpected error occurred during video analysis: {e}")
+        return {
+            "violence_detected": False,
+            "classification": "Analysis Error",
+            "detailed_report": str(e)
+        }
+
