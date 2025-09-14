@@ -1,3 +1,2 @@
 deploy-react:
-	cd frontend && npm install && npm run build
-	npm start
+	cd frontend && npm install && npm run build && npm start
