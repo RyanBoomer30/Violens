@@ -28,7 +28,7 @@ def draw_overlay(frame, status, analysis=None):
         violence_detected = analysis.get('violence_detected', 'Unknown')
         
         # Simple status indicator in top-right corner
-        if violence_detected.lower() == 'true':
+        if violence_detected == True or (isinstance(violence_detected, str) and violence_detected.lower() == 'true'):
             # Red indicator for violence detected
             cv2.circle(overlay, (VIDEO_WIDTH - 30, 30), 15, (0, 0, 255), -1)
             cv2.putText(overlay, "!", (VIDEO_WIDTH - 35, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
@@ -109,7 +109,8 @@ def send_video_to_server(video_path):
                 print("Analysis complete!")
                 print(f"Violence detected: {result.get('violence_detected', 'Unknown')}")
                 
-                if result.get('violence_detected', '').lower() == 'true':
+                violence_detected = result.get('violence_detected', False)
+                if violence_detected == True or (isinstance(violence_detected, str) and violence_detected.lower() == 'true'):
                     print(f"Classification: {result.get('classification', 'Unknown')}")
                     print(f"Report: {result.get('report', {}).get('detailed_report', 'No report available')}")
                 

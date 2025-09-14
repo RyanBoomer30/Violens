@@ -59,8 +59,15 @@ def analyze_video(file_address):
             }
         ],
     )
-
-    return response.output_text
+    
+    print("Classification: " + response.output_text)
+    
+    if response.output_text == "True":
+        return True
+    elif response.output_text == "False":
+        return False
+    else:
+        raise Exception("Invalid classification: " + response.output_text)
 
 # Generates a report based on the analysis of the video frames
 # Returns the report as a dictionary with classification and details

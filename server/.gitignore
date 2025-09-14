@@ -1,4 +1,5 @@
 __pycache__/
 temp_clips/
 stored_videos/
+debug_videos/
 reports.json

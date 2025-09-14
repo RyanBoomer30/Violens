@@ -40,15 +40,19 @@ def add_report(report):
 async def analyze_clip(file: UploadFile = File(...)):
     # Create directories for temporary processing and permanent storage
     temp_dir = "temp_clips"
-    storage_dir = "stored_videos"
+    violent_videos_dir = "stored_videos"
+    non_violent_videos_dir = "debug_videos"
     
     if not os.path.exists(temp_dir):
         os.makedirs(temp_dir)
-    if not os.path.exists(storage_dir):
-        os.makedirs(storage_dir)
+    if not os.path.exists(violent_videos_dir):
+        os.makedirs(violent_videos_dir)
+    if not os.path.exists(non_violent_videos_dir):
+        os.makedirs(non_violent_videos_dir)
     
     temp_file_path = os.path.join(temp_dir, file.filename)
-    storage_file_path = os.path.join(storage_dir, file.filename)
+    violent_storage_path = os.path.join(violent_videos_dir, file.filename)
+    non_violent_storage_path = os.path.join(non_violent_videos_dir, file.filename)
     
     try:
         # Save uploaded video to temporary location
@@ -66,8 +70,10 @@ async def analyze_clip(file: UploadFile = File(...)):
             "report": None
         }
         
+        print("Violence status: " + str(violence_detected))
+        
         # If violence is detected, generate a detailed report and save video
-        if violence_detected.lower() == "true":
+        if violence_detected:
             report_data = generate_report(temp_file_path)
             response_data["report"] = report_data
             response_data["classification"] = report_data.get("classification", "Unknown")
@@ -84,14 +90,19 @@ async def analyze_clip(file: UploadFile = File(...)):
             }
             add_report(report_entry)
             
-            # Save video permanently to storage directory only if violence detected
-            shutil.copy2(temp_file_path, storage_file_path)
+            # Save video permanently to violent videos directory
+            shutil.copy2(temp_file_path, violent_storage_path)
             response_data["video_saved"] = True
-            response_data["storage_path"] = storage_file_path
+            response_data["storage_path"] = violent_storage_path
+            response_data["storage_type"] = "violent"
         else:
-            # No violence detected, don't save video
-            response_data["video_saved"] = False
-            response_data["storage_path"] = None
+            # No violence detected, save to debug folder for debugging purposes
+            shutil.copy2(temp_file_path, non_violent_storage_path)
+            report_data = generate_report(temp_file_path)
+            response_data["report"] = report_data
+            response_data["video_saved"] = True
+            response_data["storage_path"] = non_violent_storage_path
+            response_data["storage_type"] = "non_violent"
         
         return JSONResponse(content=response_data)
         
@@ -128,7 +139,7 @@ async def delete_report(report_id: int):
     save_reports(reports)
     return JSONResponse(content={"message": "Report deleted successfully"})
 
-@app.get("/stored_videos", summary="Get list of stored videos")
+@app.get("/stored_videos", summary="Get list of violent videos")
 async def get_stored_videos():
     storage_dir = "stored_videos"
     if not os.path.exists(storage_dir):
@@ -143,7 +154,29 @@ async def get_stored_videos():
                 "filename": filename,
                 "size_bytes": stat.st_size,
                 "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "type": "violent"
+            })
+    
+    return JSONResponse(content={"videos": sorted(videos, key=lambda v: v['created_at'], reverse=True)})
+
+@app.get("/debug_videos", summary="Get list of non-violent debug videos")
+async def get_debug_videos():
+    storage_dir = "debug_videos"
+    if not os.path.exists(storage_dir):
+        return JSONResponse(content={"videos": []})
+    
+    videos = []
+    for filename in os.listdir(storage_dir):
+        file_path = os.path.join(storage_dir, filename)
+        if os.path.isfile(file_path):
+            stat = os.stat(file_path)
+            videos.append({
+                "filename": filename,
+                "size_bytes": stat.st_size,
+                "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                "type": "non_violent"
             })
     
     return JSONResponse(content={"videos": sorted(videos, key=lambda v: v['created_at'], reverse=True)})
