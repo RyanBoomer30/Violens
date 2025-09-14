@@ -1,8 +1,0 @@
-{
-    "report_id": 1757846308299,
-    "filename": "20250914_063820_capture_20250914_063820_clip328.mp4",
-    "analysis_timestamp_utc": "2025-09-14T10:38:28.299252",
-    "violence_detected": false,
-    "classification": "API Error",
-    "detailed_report": "The AI model returned an empty response. The reason was 'stop'."
-}
