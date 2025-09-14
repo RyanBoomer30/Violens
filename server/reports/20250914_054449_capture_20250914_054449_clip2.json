@@ -1,0 +1,8 @@
+{
+    "report_id": 1757843089908,
+    "filename": "20250914_054449_capture_20250914_054449_clip2.mp4",
+    "analysis_timestamp_utc": "2025-09-14T09:44:49.908323",
+    "violence_detected": false,
+    "classification": "Analysis Error",
+    "detailed_report": "Error code: 400 - {'error': {'message': \"Invalid type for 'messages[0].content[1].image_url': expected an object, but got a string instead.\", 'type': 'invalid_request_error', 'param': 'messages[0].content[1].image_url', 'code': 'invalid_type'}}"
+}
