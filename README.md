@@ -64,7 +64,15 @@ Run the server:
 ```bash 
 uvicorn server:app --reload
 ```
-Dependencies
+## Frontend Setup
+
+Navigate to the frontend folder:
+```bash
+cd frontend
+npm install
+npm start
+```
+## Dependencies
 ```bash
 Python 3.9+
 
