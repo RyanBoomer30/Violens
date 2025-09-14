@@ -10,6 +10,7 @@ import asyncio
 import cv2
 import threading
 import queue
+import tempfile
 from datetime import datetime
 from video_inference import analyze_video, generate_report
 from watchdog.observers import Observer
@@ -86,11 +87,17 @@ def camera_capture_thread():
     cap.set(cv2.CAP_PROP_FPS, 30)
     
     print(f"Started camera streaming thread with camera index {camera_index}")
+    frame_count = 0
     
     while camera_active:
         ret, frame = cap.read()
         if not ret:
+            print("Failed to read frame from camera")
             continue
+            
+        frame_count += 1
+        if frame_count % 30 == 0:  # Log every 30 frames (about 1 second at 30fps)
+            print(f"Captured {frame_count} frames, queue size: {camera_frame_queue.qsize()}")
             
         # Encode frame as JPEG
         _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
@@ -108,7 +115,7 @@ def camera_capture_thread():
                 pass
     
     cap.release()
-    print("Camera streaming thread stopped")
+    print(f"Camera streaming thread stopped after {frame_count} frames")
 
 def start_camera_streaming():
     """Start the camera streaming thread"""
@@ -136,14 +143,19 @@ def stop_camera_streaming():
 
 def generate_video_stream():
     """Generator function for video streaming"""
+    frame_sent_count = 0
     while True:
         try:
             # Get frame from queue (blocking with timeout)
             frame_bytes = camera_frame_queue.get(timeout=1.0)
+            frame_sent_count += 1
+            if frame_sent_count % 30 == 0:  # Log every 30 frames
+                print(f"Sent {frame_sent_count} frames to client, queue size: {camera_frame_queue.qsize()}")
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
         except queue.Empty:
             # Send a placeholder frame or continue
+            print("Video stream: No frames available in queue")
             continue
         except Exception as e:
             print(f"Error in video stream: {e}")
@@ -289,6 +301,40 @@ def delete_report_file(report_id):
             except (json.JSONDecodeError, FileNotFoundError) as e:
                 print(f"Error reading report {filename}: {str(e)}")
     return False
+
+@app.post("/analyze_frame", summary="Analyze footage for violence (placeholder model)")
+async def analyze_frame(file: UploadFile = File(...)):
+    """Analyze footage for violence using the existing analyze_video function"""
+    try:
+        # Create temporary file for processing
+        temp_file = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
+        temp_file_path = temp_file.name
+        temp_file.close()
+        
+        # Save uploaded file
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Use existing analyze_video function
+        violence_detected = analyze_video(temp_file_path)
+        
+        # Clean up temporary file
+        try:
+            os.unlink(temp_file_path)
+        except Exception as e:
+            print(f"Warning: Could not delete temporary file {temp_file_path}: {str(e)}")
+        
+        return JSONResponse(content={
+            "violence_detected": violence_detected,
+            "message": "Footage analysis complete"
+        })
+        
+    except Exception as e:
+        print(f"Error in analyze_frame: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Error analyzing footage: {str(e)}"}
+        )
 
 @app.post("/analyze_clip", summary="Upload and analyze a video clip")
 async def analyze_clip(file: UploadFile = File(...)):

@@ -32,8 +32,8 @@ def display_frames(base64Frames):
         display_handle.update(Image(data=base64.b64decode(img.encode("utf-8"))))
         time.sleep(0.025)
 
-# Analyzes the video frames to detect bullying or depression behavior
-# Returns True if bullying or depression behavior is detected, False otherwise
+# Analyzes the video frames to detect violence, aggression, or fighting behavior
+# Returns True if any form of violence, aggression, or fighting is detected, False otherwise
 def analyze_video(file_address):
     base64Frames = read_vid(file_address)
     response = client.responses.create(
@@ -45,7 +45,7 @@ def analyze_video(file_address):
                     {
                         "type": "input_text",
                         "text": (
-                            "Analyze these video frames to detect if there are human in the video. Respond with only 'True' if you detect any, or 'False' if you do not."
+                            "Analyze these video frames to detect any form of violence, aggression, or fighting behavior. Look for: physical altercations, punches, kicks, pushing, shoving, threatening gestures, aggressive body language, verbal confrontations, bullying behavior, or any other signs of conflict or violence. Respond with only 'True' if you detect any violence, aggression, or fighting, or 'False' if you do not."
                         )
                     },
                     *[
@@ -74,7 +74,7 @@ def analyze_video(file_address):
 def generate_report(file_address):
     base64Frames = read_vid(file_address)
     
-    # First, get the classification of the altercation
+    # First, get the classification of violence, aggression, or fighting
     classification_response = client.responses.create(
         model="gpt-4.1-mini",
         input=[
@@ -84,7 +84,7 @@ def generate_report(file_address):
                     {
                         "type": "input_text",
                         "text": (
-                            "Analyze these video frames and explain if there are human fighting and tips on how to prevent it."
+                            "Analyze these video frames and determine if there is any violence, aggression, or fighting behavior present. Look for: physical altercations, punches, kicks, pushing, shoving, threatening gestures, aggressive body language, verbal confrontations, bullying behavior, or any other signs of conflict or violence. Provide a detailed explanation of what you observe and comprehensive tips on how to prevent and de-escalate such situations."
                         )
                     },
                     *[
@@ -109,7 +109,7 @@ def generate_report(file_address):
                     {
                         "type": "input_text",
                         "text": (
-                            "Generate a concise incident report based on these video frames. Keep it brief and focused. Include: 1) Brief incident summary (1-2 sentences), 2) Key behaviors observed, 3) Recommended action. Maximum 150 words total."
+                            "Generate a concise violence/aggression incident report based on these video frames. Focus on detecting any form of violence, fighting, or aggressive behavior. Include: 1) Brief incident summary (1-2 sentences), 2) Key violent or aggressive behaviors observed, 3) Immediate recommended action for safety and de-escalation. Maximum 150 words total."
                         )
                     },
                     *[

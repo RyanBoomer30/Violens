@@ -233,7 +233,7 @@ function App() {
       const result = await response.json();
       setCameraStatus(prev => ({ ...prev, active: result.active }));
       setCameraError(null);
-      return true;
+      return result.active; // Return the actual active status
     } catch (error) {
       console.error('Error starting camera:', error);
       setCameraError('Failed to start camera');
@@ -289,16 +289,24 @@ function App() {
 
   // Handle monitoring state changes
   const handleMonitoringToggle = async () => {
+    console.log('handleMonitoringToggle called:', { isMonitoring, hasCamera: cameraStatus.has_camera });
+    
     if (isMonitoring) {
       // Stop monitoring and camera
+      console.log('Stopping monitoring...');
       setIsMonitoring(false);
       await stopCamera();
     } else {
       // Start monitoring and camera
       if (cameraStatus.has_camera) {
-        const success = await startCamera();
-        if (success !== false) {
+        console.log('Starting camera...');
+        const cameraActive = await startCamera();
+        console.log('Camera start result:', cameraActive);
+        if (cameraActive) {
+          console.log('Setting monitoring to true...');
           setIsMonitoring(true);
+        } else {
+          setCameraError('Failed to start camera');
         }
       } else {
         setCameraError('No camera available to start monitoring');
@@ -312,19 +320,28 @@ function App() {
     window.open(videoUrl, '_blank');
   };
 
-  const VideoFeed = ({ cameraId, title }) => (
-    <div className="video-feed">
-      <h3>{title}</h3>
-      <div className="video-container">
-        {cameraError ? (
-          <div className="video-error">
-            <div className="camera-icon">❌</div>
-            <p>{cameraError}</p>
-            <div className="error-help">
-              <p>Use the "Start Monitoring" button to activate the camera</p>
+  const VideoFeed = ({ cameraId, title }) => {
+    // Debug logging
+    console.log('VideoFeed render:', { 
+      cameraActive: cameraStatus.active, 
+      isMonitoring, 
+      cameraError,
+      hasCamera: cameraStatus.has_camera 
+    });
+    
+    return (
+      <div className="video-feed">
+        <h3>{title}</h3>
+        <div className="video-container">
+          {cameraError ? (
+            <div className="video-error">
+              <div className="camera-icon">❌</div>
+              <p>{cameraError}</p>
+              <div className="error-help">
+                <p>Use the "Start Monitoring" button to activate the camera</p>
+              </div>
             </div>
-          </div>
-        ) : cameraStatus.active && isMonitoring ? (
+          ) : cameraStatus.active && isMonitoring ? (
           <div className="live-video">
             <img 
               src="http://localhost:8000/video_stream" 
@@ -390,7 +407,8 @@ function App() {
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   const DetectionGraph = () => (
     <div className="graph-container">
