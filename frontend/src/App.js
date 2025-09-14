@@ -15,6 +15,17 @@ function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [lastAnalysisResult, setLastAnalysisResult] = useState(null);
   const [clipCount, setClipCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+
+  // Loading effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000); // Show loading for 2 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // WebSocket connection for real-time notifications
   useEffect(() => {
@@ -33,10 +44,10 @@ function App() {
           console.log('Parsed WebSocket data:', data);
           
           if (data.type === 'connection_established') {
-            console.log('✅ WebSocket connection established:', data.message);
+            console.log('WebSocket connection established:', data.message);
           } else if (data.type === 'new_violent_video') {
             // Print function triggered when new video is saved to stored_videos
-            console.log('🚨 NEW VIOLENT VIDEO DETECTED!');
+            console.log('NEW VIOLENT VIDEO DETECTED!');
             console.log(`Filename: ${data.filename}`);
             console.log(`Timestamp: ${data.timestamp}`);
             console.log(`Path: ${data.path}`);
@@ -48,7 +59,7 @@ function App() {
               filename: data.filename,
               filePath: data.path,
               timestamp: new Date(data.timestamp).toLocaleTimeString(),
-              message: `🚨 VIOLENT INCIDENT DETECTED: ${data.filename}`
+              message: `VIOLENT INCIDENT DETECTED: ${data.filename}`
             };
             
             setViolentVideoNotifications(prev => [notification, ...prev.slice(0, 4)]);
@@ -97,7 +108,7 @@ function App() {
             });
           } else if (data.type === 'new_report') {
             // Print function triggered when new report is generated
-            console.log('📄 NEW REPORT GENERATED!');
+            console.log('NEW REPORT GENERATED!');
             console.log(`Report ID: ${data.report_id}`);
             console.log(`Video: ${data.video_filename}`);
             console.log(`Violence Detected: ${data.violence_detected}`);
@@ -114,8 +125,8 @@ function App() {
               classification: data.classification,
               timestamp: new Date(data.timestamp).toLocaleTimeString(),
               message: data.violence_detected 
-                ? `🚨 INCIDENT REPORT: ${data.classification}` 
-                : `📊 ANALYSIS COMPLETE: ${data.video_filename}`
+                ? `INCIDENT REPORT: ${data.classification}` 
+                : `ANALYSIS COMPLETE: ${data.video_filename}`
             };
             
             setReportNotifications(prev => [reportNotification, ...prev.slice(0, 4)]);
@@ -318,7 +329,7 @@ function App() {
       <div className="video-container">
         {cameraError ? (
           <div className="video-error">
-            <div className="camera-icon">❌</div>
+            <div className="camera-icon">CAMERA ERROR</div>
             <p>{cameraError}</p>
             <div className="error-help">
               <p>Use the "Start Monitoring" button to activate the camera</p>
@@ -333,7 +344,7 @@ function App() {
               onError={() => setCameraError('Video stream error')}
             />
             <div className="status-indicator active"></div>
-            <div className="live-badge">🔴 LIVE</div>
+            <div className="live-badge">LIVE</div>
             
             {/* Recording indicator */}
             {isRecording && (
@@ -357,7 +368,7 @@ function App() {
                 <div className={`detection-result ${lastAnalysisResult.violence_detected ? 'violence-detected' : 'safe'}`}>
                   {lastAnalysisResult.violence_detected ? (
                     <>
-                      <div className="result-icon">🚨</div>
+                      <div className="result-icon">ALERT</div>
                       <div className="result-text">
                         <div className="result-status">INCIDENT DETECTED</div>
                         <div className="result-classification">{lastAnalysisResult.classification}</div>
@@ -365,7 +376,7 @@ function App() {
                     </>
                   ) : (
                     <>
-                      <div className="result-icon">✅</div>
+                      <div className="result-icon">OK</div>
                       <div className="result-text">
                         <div className="result-status">SAFE</div>
                       </div>
@@ -377,8 +388,8 @@ function App() {
           </div>
         ) : (
           <div className="video-placeholder">
-            <div className="camera-icon">📹</div>
-            <p>Camera {cameraId}</p>
+            <div className="camera-icon">CAMERA {cameraId}</div>
+            <p>Video Feed</p>
             <div className="status-message">
               {!cameraStatus.has_camera ? 
                 'No camera detected' : 
@@ -417,7 +428,7 @@ function App() {
     
     return (
       <div className="graph-container violent-incident-graph">
-        <h3>🚨 Violent Incidents Over Time</h3>
+        <h3>VIOLENT INCIDENTS OVER TIME</h3>
         <div className="graph">
           {violentIncidentData.length === 0 ? (
             <div className="no-data">No violent incidents recorded</div>
@@ -473,7 +484,7 @@ function App() {
 
   const ViolentVideoNotifications = () => (
     <div className="violent-notifications">
-      <h3>🚨 Violent Incident Alerts</h3>
+      <h3>VIOLENT INCIDENT ALERTS</h3>
       <div className="connection-status">
         <span className={`status-dot ${wsConnection ? 'connected' : 'disconnected'}`}></span>
         WebSocket: {wsConnection ? 'Connected' : 'Disconnected'}
@@ -489,11 +500,11 @@ function App() {
               onClick={() => handleVideoClick(notification)}
               title={`Click to open ${notification.filename}`}
             >
-              <div className="notification-icon">🚨</div>
+              <div className="notification-icon">ALERT</div>
               <div className="notification-content">
                 <div className="notification-message">{notification.message}</div>
                 <div className="notification-time">{notification.timestamp}</div>
-                <div className="click-hint">📹 Click to view video</div>
+                <div className="click-hint">Click to view video</div>
               </div>
             </div>
           ))
@@ -504,14 +515,14 @@ function App() {
 
   const ReportNotifications = () => (
     <div className="report-notifications">
-      <h3>📄 Analysis Reports</h3>
+      <h3>ANALYSIS REPORTS</h3>
       <div className="notifications-list">
         {reportNotifications.length === 0 ? (
           <div className="no-notifications">No reports generated yet</div>
         ) : (
           reportNotifications.map((notification) => (
             <div key={notification.id} className={`notification-item ${notification.violenceDetected ? 'report-violent' : 'report-safe'}`}>
-              <div className="notification-icon">{notification.violenceDetected ? '🚨' : '✅'}</div>
+              <div className="notification-icon">{notification.violenceDetected ? 'ALERT' : 'SAFE'}</div>
               <div className="notification-content">
                 <div className="notification-message">{notification.message}</div>
                 <div className="notification-details">
@@ -526,10 +537,22 @@ function App() {
     </div>
   );
 
+  // Loading component
+  if (isLoading) {
+    return (
+      <div className="loading-overlay">
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <div className="loading-text">Initializing VioLens...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <header className="dashboard-header">
-        <h1>🛡️ Bully Detection System</h1>
+        <h1>VioLens</h1>
         <div className="header-controls">
           <div className="stats">
             <span className="stat">
@@ -540,8 +563,8 @@ function App() {
             </span>
             <span className="stat camera-status">
               {cameraStatus.has_camera ? 
-                (cameraStatus.active ? '🟢 Live' : '🟡 Ready') : 
-                '🔴 No Camera'
+                (cameraStatus.active ? 'LIVE' : 'READY') : 
+                'NO CAMERA'
               }
             </span>
           </div>
@@ -550,7 +573,7 @@ function App() {
             onClick={handleMonitoringToggle}
             disabled={!cameraStatus.has_camera && !isMonitoring}
           >
-            {isMonitoring ? '⏸️ Stop' : '▶️ Start'} Monitoring
+            {isMonitoring ? 'STOP' : 'START'} MONITORING
           </button>
         </div>
       </header>
