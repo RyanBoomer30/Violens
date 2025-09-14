@@ -3,6 +3,9 @@ Introduction
 
 This project was born from the shared personal experiences of our team members with bullying during their school years. Frustrated by the inadequate measures in place to address such issues, we were inspired to create a proactive solution. Our goal is to create a safer learning environment for students from all backgrounds.
 
+## Video Link
+https://youtu.be/AlLmdO8t34k?si=HJ_qGfrlBx_4EV1U
+
 ## What it Does
 
 Our system is an intelligent, two-tiered AI pipeline that detects, verifies, and reports acts of violence in real time from a webcam feed.
@@ -121,3 +124,4 @@ Dataset Expansion: More diverse and ethically sourced training data.
 Deployment: Currently works locally; scaling to production requires containerization and cloud infrastructure.
 
 Privacy Considerations: Future versions need built-in anonymization and data handling policies.
+
