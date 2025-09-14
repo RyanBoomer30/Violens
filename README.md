@@ -48,10 +48,16 @@ source venv/bin/activate   # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+Create a .env file in the root directory and add your OpenAI API key:
+
+```bash 
+OPENAI_API_KEY=your_api_key_here
+```
 Run the client:
 
+```bash 
 python client.py
-
+```
 
 Run the server:
 
